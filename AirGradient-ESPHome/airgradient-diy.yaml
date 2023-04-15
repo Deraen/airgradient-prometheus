@@ -1,4 +1,10 @@
 ---
+# Local:
+# esphome run airgradient-diy.yaml --device /dev/ttyUSB0
+#
+# OTA:
+# esphome run airgradient-diy.yaml --device airgradient-juho
+#
 # Adapted from: https://github.com/m-reiner/airgradient-esphome-prometheus
 esphome:
   name: !secret name
@@ -8,7 +14,9 @@ esphome:
 logger:
 
 api:
-  password: !secret api_password
+  encryption:
+    key:
+      !secret api_key
 
 ota:
   password: !secret ota_password
@@ -28,36 +36,38 @@ wifi:
 #    gateway: PleaseChangeMe
 #    subnet: 255.255.255.0
 
-text_sensor:
-  - platform: wifi_info
-    ip_address:
-      name: ESP IP Address
-      id: esp_ip_address
+# text_sensor:
+#   - platform: wifi_info
+#     ip_address:
+#       name: ESP IP Address
+#       id: esp_ip_address
 
 i2c:
   sda: D2
   scl: D1
 
 font:
-  - file: "gfonts://Arimo@Regular"
-    id: arimo9
-    size: 9
-  - file: "gfonts://Arimo@Regular"
-    id: arimo10
-    size: 10
+  - file: "gfonts://Open Sans@Regular"
+    id: opensans
+    size: 12
+    glyphs: "!\"%()+=,-_.:°0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyzµ²³/"
+  - file: "gfonts://Open Sans@Regular"
+    id: opensans2
+    size: 24
 
 display:
   - platform: ssd1306_i2c
     id: oled
-    model: "SSD1306 64x48"
+    address: 0x3c
+    # rotation: 180°
+    model: "SH1106 128x64"
     pages:
       - id: page1
         lambda: |-
-          it.printf(0, 0, id(arimo9), "%s", id(esp_ip_address).state.c_str());
-          it.printf(0, 9, id(arimo10), "CO2: %.0f", id(co2).state);
-          it.printf(0, 18, id(arimo10), "PM2.5: %.0f", id(pm25).state);
-          it.printf(0, 27, id(arimo10), "HUM: %.0f%%", id(humidity).state);
-          it.printf(0, 36, id(arimo10), "TEMP: %.0fC", id(temp).state);
+          it.printf(0, 0, id(opensans), "CO2: %.0f ppm", id(co2).state);
+          it.printf(0, 12, id(opensans), "PM: %.0f %0.f %0.f µg/m³", id(pm10).state, id(pm25).state, id(pm100).state);
+          it.printf(0, 24, id(opensans), "VOC: %.0f", id(voc).state);
+          it.printf(0, 36, id(opensans2), "%0.f°C  %.0f%%", id(temp).state, id(humidity).state);
 
 # Provide a /metrics endpoint for Prometheus
 prometheus:
@@ -91,7 +101,7 @@ sensor:
       id: humidity
       name: "Humidity"
     address: 0x44
-    update_interval: 5s
+    update_interval: 10s
 
   - platform: pmsx003
     # type can be PMSX003, PMS5003S, PMS5003T, PMS5003ST
@@ -119,3 +129,11 @@ sensor:
       id: co2
       name: "CO2 level"
     update_interval: 60s
+
+  - platform: sgp4x
+    voc:
+      id: voc
+      name: "VOC Index"
+    nox:
+      id: nox
+      name: "NOx Index"
